@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torres de Hanoi - Reto Estricto</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #2c3e50;
+            --text-color: #333;
+            --tower-color: #7f8c8d;
+            --base-color: #34495e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .subtitle {
+            margin-top: 0;
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin-bottom: 25px;
+        }
+
+        .controls {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-box {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .stat-box span {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        #move-counter.warning {
+            color: #e67e22;
+        }
+
+        .game-container {
+            display: flex;
+            justify-content: space-around;
+            width: 700px;
+            height: 280px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            position: relative;
+            align-items: flex-end;
+            box-sizing: border-box;
+        }
+
+        .tower {
+            width: 180px;
+            height: 250px;
+            position: relative;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .tower::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 12px;
+            height: 230px;
+            background-color: var(--tower-color);
+            border-radius: 6px 6px 0 0;
+            z-index: 1;
+        }
+
+        .tower::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 15px;
+            background-color: var(--base-color);
+            border-radius: 4px;
+            z-index: 2;
+        }
+
+        .disk {
+            height: 22px;
+            border-radius: 11px;
+            z-index: 3;
+            margin-bottom: 2px;
+            transition: transform 0.15s;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);
+        }
+
+        .disk.selected {
+            transform: translateY(-25px);
+            box-shadow: 0 0 12px #f1c40f, inset 0 2px 4px rgba(255,255,255,0.4);
+            border: 2px solid #f1c40f;
+        }
+
+        /* Tamaños y Colores para los 8 discos */
+        .disk[data-size="1"] { width: 45px; background-color: #ff4d4d; }
+        .disk[data-size="2"] { width: 62px; background-color: #ff944d; }
+        .disk[data-size="3"] { width: 79px; background-color: #ffdb4d; }
+        .disk[data-size="4"] { width: 96px; background-color: #2ecc71; }
+        .disk[data-size="5"] { width: 113px; background-color: #3498db; }
+        .disk[data-size="6"] { width: 130px; background-color: #9b59b6; }
+        .disk[data-size="7"] { width: 147px; background-color: #1abc9c; }
+        .disk[data-size="8"] { width: 164px; background-color: #34495e; }
+    </style>
+</head>
+<body>
+
+    <h1>Torres de Hanoi</h1>
+    <p class="subtitle">Modo Perfecto: No se permiten errores</p>
+    
+    <div class="controls">
+        <label for="disk-count">Discos en juego:</label>
+        <select id="disk-count" style="padding: 5px; font-size: 1rem;">
+            <option value="3">3 Discos</option>
+            <option value="4">4 Discos</option>
+            <option value="5">5 Discos</option>
+            <option value="6">6 Discos</option>
+            <option value="7">7 Discos</option>
+            <option value="8" selected>8 Discos</option>
+        </select>
+        <button id="reset-btn">Reiniciar</button>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-box">Movimientos: <span id="move-counter">0</span></div>
+        <div class="stat-box">Límite Máximo: <span id="min-moves">255</span></div>
+    </div>
+
+    <div class="game-container">
+        <div class="tower" id="tower-1" data-tower="0"></div>
+        <div class="tower" id="tower-2" data-tower="1"></div>
+        <div class="tower" id="tower-3" data-tower="2"></div>
+    </div>
+    <script>
+        const towersContainer = document.querySelectorAll('.tower');
+        const moveCounterDisplay = document.getElementById('move-counter');
+        const minMovesDisplay = document.getElementById('min-moves');
+        const resetBtn = document.getElementById('reset-btn');
+        const diskCountSelect = document.getElementById('disk-count');
+
+        let towers = [[], [], []];
+        let moves = 0;
+        let targetMoves = 255;
+        let selectedDisk = null;
+        let selectedTowerIndex = null;
+
+        function initGame() {
+            towers = [[], [], []];
+            moves = 0;
+            selectedDisk = null;
+            selectedTowerIndex = null;
+            
+            moveCounterDisplay.textContent = moves;
+            moveCounterDisplay.style.color = '#2c3e50'; // Restablece el color original
+
+            const diskCount = parseInt(diskCountSelect.value);
+            targetMoves = Math.pow(2, diskCount) - 1;
+            minMovesDisplay.textContent = targetMoves;
+
+            towersContainer.forEach(tower => tower.innerHTML = '');
+
+            for (let i = diskCount; i > 0; i--) {
+                towers[0].push(i);
+            }
+
+            renderDisks();
+        }
+
+        function renderDisks() {
+            towersContainer.forEach((towerDOM, towerIndex) => {
+                towerDOM.innerHTML = '';
+                towers[towerIndex].forEach(diskSize => {
+                    const diskDOM = document.createElement('div');
+                    diskDOM.classList.add('disk');
+                    diskDOM.setAttribute('data-size', diskSize);
+                    towerDOM.appendChild(diskDOM);
+                });
+            });
+        }
+
+        function handleTowerClick(e) {
+            const towerDOM = e.currentTarget;
+            const towerIndex = parseInt(towerDOM.getAttribute('data-tower'));
+            const currentTower = towers[towerIndex];
+
+            if (selectedDisk === null) {
+                if (currentTower.length === 0) return; 
+
+                selectedDisk = currentTower[currentTower.length - 1];
+                selectedTowerIndex = towerIndex;
+
+                const topDiskDOM = towerDOM.lastElementChild;
+                if (topDiskDOM) topDiskDOM.classList.add('selected');
+            } else {
+                const targetTower = towers[towerIndex];
+
+                if (targetTower.length === 0 || targetTower[targetTower.length - 1] > selectedDisk) {
+                    towers[selectedTowerIndex].pop();
+                    targetTower.push(selectedDisk);
+                    moves++;
+                    moveCounterDisplay.textContent = moves;
+
+                    if (moves > targetMoves) {
+                        moveCounterDisplay.style.color = '#e74c3c';
+                    } else {
+                        moveCounterDisplay.style.color = '#2c3e50';
+                    }
+
+                    renderDisks();
+                    checkWin();
+                } else {
+                    renderDisks();
+                }
+
+                selectedDisk = null;
+                selectedTowerIndex = null;
+            }
+        }
+
+        function checkWin() {
+            const diskCount = parseInt(diskCountSelect.value);
+            if (towers[2].length === diskCount) {
+                setTimeout(() => {
+                    if (moves === targetMoves) {
+                        alert(`¡Increíble! Lograste la puntuación perfecta resolviendo el reto en exactamente ${moves} movimientos.`);
+                    } else {
+                        alert(`¡Completado! Lograste resolver el acertijo en ${moves} movimientos (El mínimo perfecto era ${targetMoves}).`);
+                    }
+                    initGame();
+                }, 100);
+            }
+        }
+
+        towersContainer.forEach(tower => tower.addEventListener('click', handleTowerClick));
+        resetBtn.addEventListener('click', initGame);
+        diskCountSelect.addEventListener('change', initGame);
+
+        initGame();
+    </script>
+</body>
+</html>
+

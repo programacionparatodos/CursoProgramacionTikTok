@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reto Lógico: El Peor de los Casos con Imágenes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { color: #f1c40f; margin-bottom: 5px; }
+        .instrucciones { max-width: 700px; margin: 0 auto 20px; color: #bdc3c7; font-size: 15px; }
+        
+        /* Marcadores */
+        .marcador-contenedor {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .marcador-palo {
+            background-color: #34495e;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 110px;
+            border: 2px solid #7f8c8d;
+        }
+        .marcador-palo.completo {
+            border-color: #2ecc71;
+            background-color: #27ae60;
+        }
+
+        .contador-principal {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 15px 0;
+            color: #e67e22;
+        }
+
+		/* Configuración fija de 13 columnas por 4 filas */
+        .tablero-cartas {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 1100px;
+            margin: 0 auto 30px;
+            padding: 10px;
+        }
+
+        .carta-slot {
+            perspective: 1000px;
+            width: 75px;   
+            height: 108px;
+        }
+        .carta {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s;
+            cursor: pointer;
+        }
+        .carta.volteada {
+            transform: rotateY(180deg);
+            cursor: default;
+        }
+        .cara {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .cara img {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            display: block;
+        }
+        .cara.frente {
+            transform: rotateY(180deg);
+        }
+
+        .panel-victoria {
+            display: none;
+            background-color: #27ae60;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 20px auto;
+            border: 3px solid #2ecc71;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #f1c40f;
+            color: #2c3e50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Reto Lógico: El Peor de los Casos</h1>
+    <p class="instrucciones">
+        Hay 52 cartas reales ocultas boca abajo. El objetivo es conseguir <b>un palo completo (13 cartas)</b>. 
+        Ve volteando las cartas. ¿En cuántas oportunidades crees que lo asegurarás ante el peor escenario?
+    </p>
+
+    <div class="marcador-contenedor">
+        <div class="marcador-palo" id="marcador-♠" style="color:#ffffff;">♠ Espadas: <span id="cant-♠">0</span>/13</div>
+        <div class="marcador-palo" id="marcador-♥" style="color:#ff6b6b;">♥ Corazones: <span id="cant-♥">0</span>/13</div>
+        <div class="marcador-palo" id="marcador-♣" style="color:#ffffff;">♣ Tréboles: <span id="cant-♣">0</span>/13</div>
+        <div class="marcador-palo" id="marcador-♦" style="color:#ff6b6b;">♦ Diamantes: <span id="cant-♦">0</span>/13</div>
+    </div>
+
+    <div class="contador-principal">Oportunidades utilizadas: <span id="intentos">0</span></div>
+
+    <div class="panel-victoria" id="panel-victoria">
+        <h2>¡Palo Completado! 🎉</h2>
+        <p id="texto-victoria"></p>
+        <button onclick="reiniciarJuego()">Jugar de nuevo</button>
+    </div>
+
+    <div class="tablero-cartas" id="tablero"></div>
+        <script>
+        const URL_REVERSO = "https://deckofcardsapi.com/static/img/back.png";
+        const URL_BASE_FRENTE = "https://deckofcardsapi.com/static/img/";
+
+        function limpiarUrl(urlEspecial) {
+            return urlEspecial.replace(/\s+/g, '');
+        }
+
+        const palos = [
+            { emoj: '♠', codigoApi: 'S' },
+            { emoj: '♥', codigoApi: 'H' },
+            { emoj: '♣', codigoApi: 'C' },
+            { emoj: '♦', codigoApi: 'D' }
+        ];
+        
+        let mazo = [];
+        let intentos = 0;
+        let conteoPalos = { '♠': 0, '♥': 0, '♣': 0, '♦': 0 };
+        let juegoTerminado = false;
+
+        function inicializarMazo() {
+            mazo = [];
+            intentos = 0;
+            juegoTerminado = false;
+            conteoPalos = { '♠': 0, '♥': 0, '♣': 0, '♦': 0 };
+            
+            document.getElementById('intentos').innerText = intentos;
+            document.getElementById('panel-victoria').style.display = 'none';
+            
+            palos.forEach(p => {
+                document.getElementById(`cant-${p.emoj}`).innerText = 0;
+                document.getElementById(`marcador-${p.emoj}`).classList.remove('completo');
+            });
+
+            for (let p of palos) {
+                for (let v = 1; v <= 13; v++) {
+                    let codigoValor = v;
+                    if (v === 1) codigoValor = 'A';
+                    if (v === 10) codigoValor = '0'; // La API lee el 10 como '0'
+                    if (v === 11) codigoValor = 'J';
+                    if (v === 12) codigoValor = 'Q';
+                    if (v === 13) codigoValor = 'K';
+                    
+                    let nombreArchivoImagen = `${codigoValor}${p.codigoApi} . png`;
+                    
+                    mazo.push({ 
+                        palo: p.emoj, 
+                        urlImagen: limpiarUrl(URL_BASE_FRENTE + nombreArchivoImagen) 
+                    });
+                }
+            }
+
+            for (let i = mazo.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [mazo[i], mazo[j]] = [mazo[j], mazo[i]];
+            }
+
+            renderizarTablero();
+        }
+
+        function renderizarTablero() {
+            const tablero = document.getElementById('tablero');
+            tablero.innerHTML = '';
+
+            mazo.forEach((cartaInfo, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'carta-slot';
+
+                const carta = document.createElement('div');
+                carta.className = 'carta';
+                carta.id = `carta-${index}`;
+
+                const atras = document.createElement('div');
+                atras.className = 'cara atras';
+                const imgAtras = document.createElement('img');
+                imgAtras.src = limpiarUrl(URL_REVERSO);
+                atras.appendChild(imgAtras);
+
+                const frente = document.createElement('div');
+                frente.className = 'cara frente';
+                const imgFrente = document.createElement('img');
+                imgFrente.src = cartaInfo.urlImagen;
+                frente.appendChild(imgFrente);
+
+                carta.appendChild(atras);
+                carta.appendChild(frente);
+                slot.appendChild(carta);
+                tablero.appendChild(slot);
+
+                carta.onclick = () => {
+                    if (juegoTerminado || carta.classList.contains('volteada')) return;
+
+                    carta.classList.add('volteada');
+                    intentos++;
+                    document.getElementById('intentos').innerText = intentos;
+
+                    const paloCarta = cartaInfo.palo;
+                    conteoPalos[paloCarta]++;
+                    document.getElementById(`cant-${paloCarta}`).innerText = conteoPalos[paloCarta];
+
+                    if (conteoPalos[paloCarta] === 13) {
+                        finalizarJuego(paloCarta);
+                    }
+                };
+            });
+        }
+
+        function finalizarJuego(paloGanador) {
+            juegoTerminado = true;
+            document.getElementById(`marcador-${paloGanador}`).classList.add('completo');
+            
+            const panel = document.getElementById('panel-victoria');
+            const texto = document.getElementById('texto-victoria');
+            panel.style.display = 'block';
+            
+            if (intentos === 49) {
+                texto.innerHTML = `¡Excepcional! Te tomó exactamente <b>49 oportunidades</b>.<br>Tus alumnos acaban de presenciar el <b>peor de los casos matemático</b> real en la pantalla.`;
+            } else {
+                texto.innerHTML = `Completaste el palo de <b>${paloGanador}</b> en <b>${intentos} oportunidades</b>.<br>El peor escenario posible requería obligatoriamente 49 intentos.`;
+            }
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function reiniciarJuego() { inicializarMazo(); }
+        window.onload = inicializarMazo;
+    </script>
+</body>
+</html>

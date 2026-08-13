@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El acertijo de la Moneda Falsa</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #f0f4f8;
+            color: #333;
+            padding: 20px;
+        }
+        h1 { color: #2c3e50; }
+        .instrucciones { max-width: 600px; margin: 0 auto 20px; color: #555; }
+        
+        /* Contenedor de Monedas */
+        .zona-monedas {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .moneda {
+            width: 50px;
+            height: 50px;
+            background-color: #f1c40f;
+            border: 3px solid #f39c12;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .moneda:hover { transform: scale(1.1); }
+        .moneda.seleccionada-izq { background-color: #3498db; border-color: #2980b9; color: white; }
+        .moneda.seleccionada-der { background-color: #e74c3c; border-color: #c0392b; color: white; }
+
+        /* Estructura de la Balanza */
+        .balanza-contenedor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 40px auto;
+            width: 400px;
+        }
+        /* El eje horizontal que se inclina */
+        .brazo {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            border-top: 8px solid #7f8c8d;
+            position: relative;
+            transition: transform 0.5s ease;
+            transform-origin: center top;
+        }
+        /* Estados de inclinación */
+        .brazo.inclinado-izq { transform: rotate(-10deg); }
+        .brazo.inclinado-der { transform: rotate(10deg); }
+        
+        /* Los platos de la balanza */
+        .plato {
+            width: 120px;
+            min-height: 80px;
+            background-color: #bdc3c7;
+            border: 4px solid #95a5a6;
+            border-radius: 0 0 50px 50px;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            align-content: flex-start;
+            margin-top: 20px;
+        }
+        .plato-izq { border-color: #3498db; }
+        .plato-der { border-color: #e74c3c; }
+
+        /* Base central estática */
+        .base {
+            width: 20px;
+            height: 100px;
+            background-color: #7f8c8d;
+            margin-top: -20px;
+            z-index: -1;
+        }
+
+        /* Botones y Estado */
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover { background-color: #27ae60; }
+        .info { font-size: 18px; margin: 15px; font-weight: bold; }
+        .resultado { font-size: 20px; color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>El Acertijo de la Moneda Falsa</h1>
+    <p class="instrucciones">
+        Una de las 8 monedas es falsa y <b>pesa menos</b>. Haz clic en las monedas para colocarlas en el plato 
+        <span style="color:#3498db;font-weight:bold;">Azul (Izquierdo)</span> o <span style="color:#e74c3c;font-weight:bold;">Rojo (Derecho)</span>.
+    </p>
+
+    <div class="zona-monedas" id="banco-monedas"></div>
+
+    <div class="balanza-contenedor">
+        <div class="brazo" id="brazo-balanza">
+            <div class="plato plato-izq" id="plato-izq"></div>
+            <div class="plato plato-der" id="plato-der"></div>
+        </div>
+        <div class="base"></div>
+    </div>
+
+    <div>
+        <button onclick="pesar()">Pesar Balanza ⚖️</button>
+        <button onclick="reiniciarJuego()" style="background-color: #95a5a6;">Reiniciar</button>
+    </div>
+
+    <div class="info">Pesadas realizadas: <span id="contador-pesadas">0</span></div>
+    <div class="info" id="mensaje-balanza">Balanza: En espera...</div>
+    <div class="resultado" id="mensaje-final"></div>
+
+    <script>
+        let monedaFalsa = 0;
+        let pesadas = 0;
+        let estadoMonedas = {}; 
+
+        function iniciarJuego() {
+            pesadas = 0;
+            document.getElementById('contador-pesadas').innerText = pesadas;
+            document.getElementById('mensaje-balanza').innerText = "Balanza: En espera...";
+            document.getElementById('mensaje-final').innerText = "";
+            document.getElementById('brazo-balanza').className = "brazo";
+            
+            monedaFalsa = Math.floor(Math.random() * 8) + 1;
+            console.log("Moneda falsa secreta: " + monedaFalsa); // Para el profesor en consola
+
+            for(let i=1; i<=8; i++) { estadoMonedas[i] = 'banco'; }
+            renderizarMonedas();
+        }
+
+        function renderizarMonedas() {
+            const banco = document.getElementById('banco-monedas');
+            const pIzq = document.getElementById('plato-izq');
+            const pDer = document.getElementById('plato-der');
+            
+            banco.innerHTML = '';
+            pIzq.innerHTML = '';
+            pDer.innerHTML = '';
+
+            for(let i=1; i<=8; i++) {
+                const divMoneda = document.createElement('div');
+                divMoneda.className = 'moneda';
+                divMoneda.innerText = i;
+                
+                divMoneda.onclick = () => {
+                    if (estadoMonedas[i] === 'banco') estadoMonedas[i] = 'izq';
+                    else if (estadoMonedas[i] === 'izq') estadoMonedas[i] = 'der';
+                    else estadoMonedas[i] = 'banco';
+                    renderizarMonedas();
+                };
+
+                if(estadoMonedas[i] === 'banco') {
+                    banco.appendChild(divMoneda);
+                } else if(estadoMonedas[i] === 'izq') {
+                    divMoneda.classList.add('seleccionada-izq');
+                    pIzq.appendChild(divMoneda);
+                } else if(estadoMonedas[i] === 'der') {
+                    divMoneda.classList.add('seleccionada-der');
+                    pDer.appendChild(divMoneda);
+                }
+            }
+        }
+
+        function pesar() {
+            let pesoIzq = 0;
+            let pesoDer = 0;
+            let cantIzq = 0;
+            let cantDer = 0;
+
+            for(let i=1; i<=8; i++) {
+                let pesoMoneda = (i === monedaFalsa) ? 1 : 2; // La falsa pesa menos
+                if(estadoMonedas[i] === 'izq') { pesoIzq += pesoMoneda; cantIzq++; }
+                if(estadoMonedas[i] === 'der') { pesoDer += pesoMoneda; cantDer++; }
+            }
+
+            if(cantIzq === 0 && cantDer === 0) {
+                alert("¡Coloca algunas monedas en los platos primero!");
+                return;
+            }
+
+            pesadas++;
+            document.getElementById('contador-pesadas').innerText = pesadas;
+            const brazo = document.getElementById('brazo-balanza');
+            const txtBalanza = document.getElementById('mensaje-balanza');
+
+            if (pesoIzq > pesoDer) {
+                brazo.className = "brazo inclinado-izq";
+                txtBalanza.innerText = "Balanza: El plato IZQUIERDO es más pesado.";
+            } else if (pesoDer > pesoIzq) {
+                brazo.className = "brazo inclinado-der";
+                txtBalanza.innerText = "Balanza: El plato DERECHO es más pesado.";
+            } else {
+                brazo.className = "brazo";
+                txtBalanza.innerText = "Balanza: Ambos platos pesan lo mismo (Equilibrio).";
+            }
+
+            comprobarVictoria(cantIzq, cantDer, pesoIzq, pesoDer);
+        }
+
+        function comprobarVictoria(cantIzq, cantDer, pesoIzq, pesoDer) {
+            if (pesadas === 2) {
+                document.getElementById('mensaje-final').innerHTML = `
+                    <p style="color:#e67e22;">¡Fin de tus 2 pesadas!</p>
+                    <p>La moneda falsa era la número <b>${monedaFalsa}</b>.</p>
+                    <small>¿Lograste aislarla usando la lógica?</small>
+                `;
+            }
+        }
+
+        function reiniciarJuego() { iniciarJuego(); }
+
+        window.onload = iniciarJuego;
+    </script>
+</body>
+</html>
