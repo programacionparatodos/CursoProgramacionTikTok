@@ -1,6 +1,8 @@
 Algoritmo RotarNumeroNDigitos
 	Definir num_original, cantidad_digitos, rotado, aux, nuevo_residuo Como Entero;
 	Definir digito, multiplicador, primer_digito, i Como Entero;
+	Definir copia_ori, copia_rot, suma_digitos, digito_ori, digito_rot, suma_actual Como Entero;
+	Definir toca_par, es_valida, es_par_actual Como Logico;
 	
 	Escribir "Ingrese un número entero positivo: ";
 	Leer num_original;
@@ -41,7 +43,40 @@ Algoritmo RotarNumeroNDigitos
 		// Colocamos el primer dígito al final del nuevo número construido
 		rotado = (nuevo_residuo * 10) + primer_digito;
 		
-		Escribir "Rotación ", i, ": ", rotado;
+		// SUMA POSICIONAL Y VALIDANDO LA ALTERNANCIA
+		
+		copia_ori = num_original;
+		copia_rot = rotado;
+		
+		// Evaluamos la primera posición (unidades) para fijar el inicio del patrón
+		suma_digitos <- (copia_ori MOD 10) + (copia_rot % 10);
+		toca_par = (suma_digitos MOD 2 = 0);
+		es_valida = Verdadero;
+		
+		Mientras (copia_ori > 0 Y es_valida = Verdadero) Hacer
+			digito_ori = copia_ori MOD 10;
+			digito_rot = copia_rot MOD 10;
+			
+			suma_actual = digito_ori + digito_rot;
+			es_par_actual = (suma_actual MOD 2 = 0);
+			
+			// Comprobamos si la paridad actual coincide con lo esperado
+			Si es_par_actual = toca_par Entonces
+				toca_par = NO toca_par;
+			SiNo
+				es_valida = Falso;
+			FinSi
+			
+			copia_ori = trunc(copia_ori / 10);
+			copia_rot = trunc(copia_rot / 10);
+		FinMientras	
+		
+		Si es_valida = Verdadero Entonces
+			Escribir "Rotación ", i, ": ", rotado, " -> ES VÁLIDA";
+		SiNo
+			Escribir "Rotación ", i, ": ", rotado, " -> NO ES VÁLIDA";
+		FinSi
+		
 	FinPara
 	// Contador: se incrementan con un valor fijo
 	// c = c + 2;
